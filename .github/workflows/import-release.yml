@@ -1,0 +1,46 @@
+name: Import release assets
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release draft tag
+        required: true
+      assets:
+        description: JSON list of installer names, sizes and temporary download URLs
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: import-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy installer assets to the release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, re, subprocess, tempfile, urllib.parse
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          tag=event['inputs']['tag']
+          assert re.fullmatch(r'v\d+\.\d+\.\d+',tag), 'Invalid version tag'
+          repo=os.environ['GITHUB_REPOSITORY']
+          release=json.loads(subprocess.check_output(['gh','release','view',tag,'--repo',repo,'--json','isDraft'],text=True))
+          assert release['isDraft'], 'Only unpublished drafts may receive assets'
+          version=tag[1:]
+          with tempfile.TemporaryDirectory() as directory:
+              for asset in json.loads(event['inputs']['assets']):
+                  name=asset['name']; url=urllib.parse.urlsplit(asset['url'])
+                  allowed=rf'Dsivio-{re.escape(version)}-(mac-arm64\.(dmg|zip)|win-x64\.(exe|zip))(\.blockmap)?|latest(-mac)?\.yml'
+                  assert re.fullmatch(allowed,name), 'Unexpected release asset'
+                  assert url.scheme=='https' and url.hostname in {'release-assets.githubusercontent.com','objects.githubusercontent.com'}, 'Unexpected download host'
+                  print('Copying '+name,flush=True)
+                  file=pathlib.Path(directory)/name
+                  subprocess.run(['curl','--fail','--silent','--show-error','--location','--retry','3','--output',str(file),asset['url']],check=True)
+                  assert file.stat().st_size==asset['size'], 'Incomplete download'
+                  subprocess.run(['gh','release','upload',tag,str(file),'--repo',repo,'--clobber'],check=True)
+                  print('Uploaded '+name,flush=True)
+          PY
