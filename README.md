@@ -4,7 +4,7 @@ Dsivio 桌面客户端的公开下载与更新仓库。
 
 [下载最新版本 / Download the latest release](https://github.com/ZMGID/Dsivio-Releases/releases/latest) · [官网 / Website](https://eastforceglobal.com/dsivio/)
 
-首次发布完成后，上方链接将提供安装包。
+当前正式版本：[Dsivio v1.2.6](https://github.com/ZMGID/Dsivio-Releases/releases/tag/v1.2.6)。支持 macOS Apple Silicon（arm64）与 Windows x64；下载页提供安装包与 SHA-256 校验清单。
 
 | 系统 / Platform | 手动安装 / Installer |
 | --- | --- |
